@@ -2,6 +2,10 @@ use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::io;
 
+use crate::codons::dict;
+
+mod codons;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum DNA {
     A,
@@ -159,7 +163,7 @@ fn read_dna(path: &str, lines: Option<usize>) -> io::Result<Seq<DNA>> {
         dna_lines.collect()
     };
 
-    let mut dna = Seq::new();
+    let mut dna = Seq::with_capacity(dna_string.len());
     for nt in dna_string.chars() {
         dna.push(DNA::from(nt))
     }
@@ -215,16 +219,12 @@ fn translate(
     let mut start = start;
     let mut prot = Vec::new();
     while start + 3 <= rna.len() {
-        if let Some(aa) = amino_acid_dict.get(&rna[start..start + 3]) {
-            if aa == &AminoAcid::Stop {
-                break;
-            }
-
-            prot.push(*aa)
-        } else {
-            return prot;
+        // if let Some(aa) = amino_acid_dict.get(&rna[start..start + 3]) {
+        let aa = dict(&rna[start..start + 3]);
+        if aa == AminoAcid::Stop {
+            break;
         }
-
+        prot.push(aa);
         start += 3
     }
 
