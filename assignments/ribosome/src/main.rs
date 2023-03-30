@@ -2,141 +2,10 @@ use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::io::{self, stdout, BufWriter, Write};
 
-use crate::codons::dict;
+use sequence::{dict, AminoAcid, Codon, Seq, Sequence, DNA, RNA};
 
-mod codons;
+mod sequence;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum DNA {
-    A,
-    T,
-    C,
-    G,
-}
-
-impl From<char> for DNA {
-    fn from(value: char) -> Self {
-        match value {
-            'A' => Self::A,
-            'T' => Self::T,
-            'C' => Self::C,
-            'G' => Self::G,
-            unknown => panic!("unknown nucleotide '{unknown}'"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum RNA {
-    A,
-    U,
-    C,
-    G,
-}
-
-impl From<char> for RNA {
-    fn from(value: char) -> Self {
-        match value {
-            'A' => Self::A,
-            'U' => Self::U,
-            'C' => Self::C,
-            'G' => Self::G,
-            unknown => panic!("unknown nucleotide '{unknown}'"),
-        }
-    }
-}
-
-impl From<DNA> for RNA {
-    fn from(value: DNA) -> Self {
-        match value {
-            DNA::A => Self::A,
-            DNA::T => Self::U,
-            DNA::C => Self::C,
-            DNA::G => Self::G,
-        }
-    }
-}
-
-type Seq<T> = Vec<T>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum AminoAcid {
-    /// Alanine 	    'A'
-    Ala,
-    /// Arginine 	    'R'
-    Arg,
-    /// Asparagine 	    'N'
-    Asn,
-    /// Aspartate 	    'D'
-    Asp,
-    /// Cysteine 	    'C'
-    Cys,
-    /// Glutamine 	    'Q'
-    Gln,
-    /// Glutamate 	    'E'
-    Glu,
-    /// Glycine 	    'G'
-    Gly,
-    /// Histidine 	    'H'
-    His,
-    /// Isoleucine 	    'I'
-    Ile,
-    /// Leucine 	    'L'
-    Leu,
-    /// Lysine 	        'K'
-    Lys,
-    /// Methionine 	    'M'
-    Met,
-    /// Phenylalanine 	'F'
-    Phe,
-    /// Proline 	    'P'
-    Pro,
-    /// Serine 	        'S'
-    Ser,
-    /// Threonine 	    'T'
-    Thr,
-    /// Tryptophan 	    'W'
-    Trp,
-    /// Tyrosine 	    'Y'
-    Tyr,
-    /// Valine 	        'V'
-    Val,
-
-    /// Stop codon
-    Stop,
-}
-
-impl From<&str> for AminoAcid {
-    fn from(value: &str) -> Self {
-        use AminoAcid::*;
-        match value {
-            "A" => Ala,
-            "R" => Arg,
-            "N" => Asn,
-            "D" => Asp,
-            "C" => Cys,
-            "Q" => Gln,
-            "E" => Glu,
-            "G" => Gly,
-            "H" => His,
-            "I" => Ile,
-            "L" => Leu,
-            "K" => Lys,
-            "M" => Met,
-            "F" => Phe,
-            "P" => Pro,
-            "S" => Ser,
-            "T" => Thr,
-            "W" => Trp,
-            "Y" => Tyr,
-            "V" => Val,
-            "STOP" => Stop,
-            unknown => panic!("unknown amino acid code '{unknown}'"),
-        }
-    }
-}
-
-type Codon = [RNA; 3];
 type CodonToAminoAcidDict = HashMap<Codon, AminoAcid>;
 
 #[allow(dead_code)]
@@ -251,21 +120,80 @@ fn translate_all(start_codon: [RNA; 3], rna: &Seq<RNA>) -> Vec<Vec<AminoAcid>> {
 }
 
 fn main() -> io::Result<()> {
-    const AUG: Codon = [RNA::A, RNA::U, RNA::G];
+    // const AUG: Codon = [RNA::A, RNA::U, RNA::G];
+    //
+    // let dna = read_dna("E_Coli.txt", None)?;
+    // let rna = transcribe_dna(dna);
+    //
+    // let first_start = find_start_position(AUG, &rna, 0).expect("should contain 'AUG'");
+    // let first_prot = translate(&rna, first_start);
+    // println!("First protein: {first_prot:?}");
+    //
+    // let all_prots = translate_all(AUG, &rna);
+    // println!("All protein:");
+    // let mut stdout = BufWriter::new(stdout());
+    // for (n, prot) in all_prots.iter().enumerate() {
+    //     writeln!(stdout, "({n}) => {prot:?}", n = n + 1)?;
+    // }
 
     let dna = read_dna("E_Coli.txt", None)?;
-    let rna = transcribe_dna(dna);
-
-    let first_start = find_start_position(AUG, &rna, 0).expect("should contain 'AUG'");
-    let first_prot = translate(&rna, first_start);
-    println!("First protein: {first_prot:?}");
-
-    let all_prots = translate_all(AUG, &rna);
-    println!("All protein:");
-    let mut stdout = BufWriter::new(stdout());
-    for (n, prot) in all_prots.iter().enumerate() {
-        writeln!(stdout, "({n}) => {prot:?}", n = n + 1)?;
-    }
+    dbg!(dna.len());
+    let seq = Sequence::from_vec(dna.clone());
+    dbg!(seq.chunks.len());
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use DNA::*;
+    static TEST_DNA: [sequence::DNA; 700] = [
+        A, G, C, T, T, T, T, C, A, T, T, C, T, G, A, C, T, G, C, A, A, C, G, G, G, C, A, A, T, A,
+        T, G, T, C, T, C, T, G, T, G, T, G, G, A, T, T, A, A, A, A, A, A, A, G, A, G, T, C, T, C,
+        T, G, A, C, A, G, C, A, G, C, T, T, C, T, G, A, A, C, T, G, G, T, T, A, C, C, T, G, C, C,
+        G, T, G, A, G, T, A, A, A, T, T, A, A, A, A, T, T, T, T, A, T, T, G, A, C, T, T, A, G, G,
+        T, C, A, C, T, A, A, A, T, A, C, T, T, T, A, A, C, C, A, A, T, A, T, A, G, G, C, A, T, A,
+        G, C, G, C, A, C, A, G, A, C, A, G, A, T, A, A, A, A, A, T, T, A, C, A, G, A, G, T, A, C,
+        A, C, A, A, C, A, T, C, C, A, T, G, A, A, A, C, G, C, A, T, T, A, G, C, A, C, C, A, C, C,
+        A, T, T, A, C, C, A, C, C, A, C, C, A, T, C, A, C, C, A, C, C, A, C, C, A, T, C, A, C, C,
+        A, T, T, A, C, C, A, T, T, A, C, C, A, C, A, G, G, T, A, A, C, G, G, T, G, C, G, G, G, C,
+        T, G, A, C, G, C, G, T, A, C, A, G, G, A, A, A, C, A, C, A, G, A, A, A, A, A, A, G, C, C,
+        C, G, C, A, C, C, T, G, A, C, A, G, T, G, C, G, G, G, C, T, T, T, T, T, T, T, T, C, G, A,
+        C, C, A, A, A, G, G, T, A, A, C, G, A, G, G, T, A, A, C, A, A, C, C, A, T, G, C, G, A, G,
+        T, G, T, T, G, A, A, G, T, T, C, G, G, C, G, G, T, A, C, A, T, C, A, G, T, G, G, C, A, A,
+        A, T, G, C, A, G, A, A, C, G, T, T, T, T, C, T, G, C, G, G, G, T, T, G, C, C, G, A, T, A,
+        T, T, C, T, G, G, A, A, A, G, C, A, A, T, G, C, C, A, G, G, C, A, G, G, G, G, C, A, G, G,
+        T, G, G, C, C, A, C, C, G, T, C, C, T, C, T, C, T, G, C, C, C, C, C, G, C, C, A, A, A, A,
+        T, C, A, C, C, A, A, C, C, A, C, C, T, G, G, T, G, G, C, G, A, T, G, A, T, T, G, A, A, A,
+        A, A, A, C, C, A, T, T, A, G, C, G, G, C, C, A, G, G, A, T, G, C, T, T, T, A, C, C, C, A,
+        A, T, A, T, C, A, G, C, G, A, T, G, C, C, G, A, A, C, G, T, A, T, T, T, T, T, G, C, C, G,
+        A, A, C, T, T, C, T, G, A, C, G, G, G, A, C, T, C, G, C, C, G, C, C, G, C, C, C, A, G, C,
+        C, G, G, G, A, T, T, C, C, C, G, C, T, G, G, C, G, C, A, A, T, T, G, A, A, A, A, C, T, T,
+        T, C, G, T, C, G, A, C, C, A, G, G, A, A, T, T, T, G, C, C, C, A, A, A, T, A, A, A, A, C,
+        A, T, G, T, C, C, T, G, C, A, T, G, G, C, A, T, T, A, G, T, T, T, G, T, T, A, G, G, G, C,
+        A, G, T, G, C, C, C, G, G, A,
+    ];
+
+    #[test]
+    fn sequence_from_vec() {
+        let dna_vec = TEST_DNA.to_vec();
+        let seq = Sequence::from_vec(dna_vec.clone());
+
+        assert_eq!(dna_vec, seq.to_dna_vec());
+    }
+
+    #[test]
+    fn get_from_sequence() {
+        let dna_vec = TEST_DNA.to_vec();
+        let seq = Sequence::from_vec(dna_vec.clone());
+
+        let mut seq_get_vec = Vec::new();
+        for i in 0..seq.len() {
+            seq_get_vec.push(seq.get(i))
+        }
+
+        assert_eq!(dna_vec, seq_get_vec);
+    }
 }
