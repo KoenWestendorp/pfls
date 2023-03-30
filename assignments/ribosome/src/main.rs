@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::read_to_string;
-use std::io;
+use std::io::{self, stdout, BufWriter, Write};
 
 use crate::codons::dict;
 
@@ -139,6 +139,7 @@ impl From<&str> for AminoAcid {
 type Codon = [RNA; 3];
 type CodonToAminoAcidDict = HashMap<Codon, AminoAcid>;
 
+#[allow(dead_code)]
 fn read_dictionary(path: &str) -> io::Result<CodonToAminoAcidDict> {
     let contents = read_to_string(path)?;
 
@@ -209,11 +210,7 @@ where
 /// # Panics
 ///
 /// Length of `rna` must be greater than or equal to the value of `start`.
-fn translate(
-    amino_acid_dict: &CodonToAminoAcidDict,
-    rna: &Seq<RNA>,
-    start: usize,
-) -> Vec<AminoAcid> {
+fn translate(rna: &Seq<RNA>, start: usize) -> Vec<AminoAcid> {
     assert!(start <= rna.len());
 
     let mut start = start;
@@ -231,11 +228,7 @@ fn translate(
     prot
 }
 
-fn translate_all(
-    amino_acid_dict: &CodonToAminoAcidDict,
-    start_codon: [RNA; 3],
-    rna: &Seq<RNA>,
-) -> Vec<Vec<AminoAcid>> {
+fn translate_all(start_codon: [RNA; 3], rna: &Seq<RNA>) -> Vec<Vec<AminoAcid>> {
     // Find all start positions in the RNA sequence.
     let mut starts = Vec::new();
     let mut pos = 0;
@@ -251,7 +244,7 @@ fn translate_all(
     // Translate all proteins following the start positions.
     let mut proteins = Vec::new();
     for start in starts {
-        proteins.push(translate(amino_acid_dict, rna, start));
+        proteins.push(translate(rna, start));
     }
 
     proteins
@@ -260,18 +253,18 @@ fn translate_all(
 fn main() -> io::Result<()> {
     const AUG: Codon = [RNA::A, RNA::U, RNA::G];
 
-    let dict = read_dictionary("Genetic_Code.txt")?;
     let dna = read_dna("E_Coli.txt", None)?;
     let rna = transcribe_dna(dna);
 
     let first_start = find_start_position(AUG, &rna, 0).expect("should contain 'AUG'");
-    let first_prot = translate(&dict, &rna, first_start);
+    let first_prot = translate(&rna, first_start);
     println!("First protein: {first_prot:?}");
 
-    let all_prots = translate_all(&dict, AUG, &rna);
+    let all_prots = translate_all(AUG, &rna);
     println!("All protein:");
+    let mut stdout = BufWriter::new(stdout());
     for (n, prot) in all_prots.iter().enumerate() {
-        //println!("({n}) => {prot}", n = n + 1);
+        writeln!(stdout, "({n}) => {prot:?}", n = n + 1)?;
     }
 
     Ok(())

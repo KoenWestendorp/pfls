@@ -1,4 +1,4 @@
-use crate::{AminoAcid, Codon, RNA};
+use crate::{AminoAcid, RNA};
 
 pub(crate) fn dict(codon: &[RNA]) -> AminoAcid {
     use AminoAcid::*;
